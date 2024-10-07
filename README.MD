@@ -76,5 +76,5 @@ The training loss graph shows that our model trains more efficiently and stays m
   <img src="results/original_2.gif" alt="original">
   <img src="results/gt_2.gif" alt="gt">
   <br>
-  <em>Figure 2: Multiple views of reconstructed car models demonstrating consistent quality across different perspectives</em>
+  <em>Figure: Multiple views of reconstructed car models demonstrating consistent quality across different perspectives</em>
 </p>
