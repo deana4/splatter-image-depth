@@ -11,8 +11,9 @@ from utils.graphics_utils import getWorld2View2, getProjectionMatrix, getView2Wo
 
 from .shared_dataset import SharedDataset
 
-SHAPENET_DATASET_ROOT = None # Change this to your data directory
+SHAPENET_DATASET_ROOT = 'data/SRN'  # Change this to your data directory
 assert SHAPENET_DATASET_ROOT is not None, "Update the location of the SRN Shapenet Dataset"
+
 
 class SRNDataset(SharedDataset):
     def __init__(self, cfg,
@@ -45,9 +46,9 @@ class SRNDataset(SharedDataset):
 
         self.projection_matrix = getProjectionMatrix(
             znear=self.cfg.data.znear, zfar=self.cfg.data.zfar,
-            fovX=cfg.data.fov * 2 * np.pi / 360, 
-            fovY=cfg.data.fov * 2 * np.pi / 360).transpose(0,1)
-        
+            fovX=cfg.data.fov * 2 * np.pi / 360,
+            fovY=cfg.data.fov * 2 * np.pi / 360).transpose(0, 1)
+
         self.imgs_per_obj = self.cfg.opt.imgs_per_obj
 
         # in deterministic version the number of testing images
@@ -62,15 +63,21 @@ class SRNDataset(SharedDataset):
     def __len__(self):
         return len(self.intrins)
 
+    def load_depth_from_txt(self, depth_path):
+
+        return torch.from_numpy(np.loadtxt(depth_path))
+
     def load_example_id(self, example_id, intrin_path,
-                        trans = np.array([0.0, 0.0, 0.0]), scale=1.0):
+                        trans=np.array([0.0, 0.0, 0.0]), scale=1.0):
         dir_path = os.path.dirname(intrin_path)
         rgb_paths = sorted(glob.glob(os.path.join(dir_path, "rgb", "*")))
         pose_paths = sorted(glob.glob(os.path.join(dir_path, "pose", "*")))
-        assert len(rgb_paths) == len(pose_paths)
+        depth_paths = sorted(glob.glob(os.path.join(dir_path, "depth", "*")))
+        assert len(rgb_paths) == len(pose_paths) == len(depth_paths)
 
         if not hasattr(self, "all_rgbs"):
             self.all_rgbs = {}
+            self.all_depths = {}
             self.all_world_view_transforms = {}
             self.all_view_to_world_transforms = {}
             self.all_full_proj_transforms = {}
@@ -78,6 +85,7 @@ class SRNDataset(SharedDataset):
 
         if example_id not in self.all_rgbs.keys():
             self.all_rgbs[example_id] = []
+            self.all_depths[example_id] = []
             self.all_world_view_transforms[example_id] = []
             self.all_full_proj_transforms[example_id] = []
             self.all_camera_centers[example_id] = []
@@ -85,29 +93,37 @@ class SRNDataset(SharedDataset):
 
             cam_infos = readCamerasFromTxt(rgb_paths, pose_paths, [i for i in range(len(rgb_paths))])
 
-            for cam_info in cam_infos:
+            for cam_info, depth_path in zip(cam_infos, depth_paths):
                 R = cam_info.R
                 T = cam_info.T
 
-                self.all_rgbs[example_id].append(PILtoTorch(cam_info.image, 
-                                                            (self.cfg.data.training_resolution, self.cfg.data.training_resolution)).clamp(0.0, 1.0)[:3, :, :])
+                self.all_rgbs[example_id].append(PILtoTorch(cam_info.image,
+                                                            (self.cfg.data.training_resolution,
+                                                             self.cfg.data.training_resolution)).clamp(0.0, 1.0)[:3, :,
+                                                 :])
+
+                # Load depth from txt file
+                depth_tensor = self.load_depth_from_txt(depth_path)
+                self.all_depths[example_id].append(depth_tensor)
 
                 world_view_transform = torch.tensor(getWorld2View2(R, T, trans, scale)).transpose(0, 1)
                 view_world_transform = torch.tensor(getView2World(R, T, trans, scale)).transpose(0, 1)
 
-                full_proj_transform = (world_view_transform.unsqueeze(0).bmm(self.projection_matrix.unsqueeze(0))).squeeze(0)
+                full_proj_transform = (
+                    world_view_transform.unsqueeze(0).bmm(self.projection_matrix.unsqueeze(0))).squeeze(0)
                 camera_center = world_view_transform.inverse()[3, :3]
 
                 self.all_world_view_transforms[example_id].append(world_view_transform)
                 self.all_view_to_world_transforms[example_id].append(view_world_transform)
                 self.all_full_proj_transforms[example_id].append(full_proj_transform)
                 self.all_camera_centers[example_id].append(camera_center)
-            
+
             self.all_world_view_transforms[example_id] = torch.stack(self.all_world_view_transforms[example_id])
             self.all_view_to_world_transforms[example_id] = torch.stack(self.all_view_to_world_transforms[example_id])
             self.all_full_proj_transforms[example_id] = torch.stack(self.all_full_proj_transforms[example_id])
             self.all_camera_centers[example_id] = torch.stack(self.all_camera_centers[example_id])
             self.all_rgbs[example_id] = torch.stack(self.all_rgbs[example_id])
+            self.all_depths[example_id] = torch.stack(self.all_depths[example_id])
 
     def get_example_id(self, index):
         intrin_path = self.intrins[index]
@@ -121,19 +137,20 @@ class SRNDataset(SharedDataset):
         self.load_example_id(example_id, intrin_path)
         if self.dataset_name == "train":
             frame_idxs = torch.randperm(
-                    len(self.all_rgbs[example_id])
-                    )[:self.imgs_per_obj]
+                len(self.all_rgbs[example_id])
+            )[:self.imgs_per_obj]
 
             frame_idxs = torch.cat([frame_idxs[:self.cfg.data.input_images], frame_idxs], dim=0)
 
         else:
             input_idxs = self.test_input_idxs
-            
-            frame_idxs = torch.cat([torch.tensor(input_idxs), 
-                                    torch.tensor([i for i in range(251) if i not in input_idxs])], dim=0) 
+
+            frame_idxs = torch.cat([torch.tensor(input_idxs),
+                                    torch.tensor([i for i in range(251) if i not in input_idxs])], dim=0)
 
         images_and_camera_poses = {
             "gt_images": self.all_rgbs[example_id][frame_idxs].clone(),
+            "gt_depths": self.all_depths[example_id][frame_idxs].clone(),
             "world_view_transforms": self.all_world_view_transforms[example_id][frame_idxs],
             "view_to_world_transforms": self.all_view_to_world_transforms[example_id][frame_idxs],
             "full_proj_transforms": self.all_full_proj_transforms[example_id][frame_idxs],
@@ -141,6 +158,7 @@ class SRNDataset(SharedDataset):
         }
 
         images_and_camera_poses = self.make_poses_relative_to_first(images_and_camera_poses)
-        images_and_camera_poses["source_cv2wT_quat"] = self.get_source_cw2wT(images_and_camera_poses["view_to_world_transforms"])
+        images_and_camera_poses["source_cv2wT_quat"] = self.get_source_cw2wT(
+            images_and_camera_poses["view_to_world_transforms"])
 
         return images_and_camera_poses
