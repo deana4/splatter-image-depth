@@ -65,6 +65,13 @@ The training loss graph shows that our model trains more efficiently and stays m
 </p>
 
 <p align="center">
+  <img src="results/ours.gif" alt="ours">
+  <img src="results/original.gif" alt="original">
+  <img src="results/gt.gif" alt="gt">
+  <br>
+</p>
+
+<p align="center">
   <img src="results/ours_2.gif" alt="ours">
   <img src="results/original_2.gif" alt="original">
   <img src="results/gt_2.gif" alt="gt">
