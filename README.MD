@@ -60,6 +60,8 @@ The training loss graph shows that our model trains more efficiently and stays m
 
 ## Reconstruction Results
 
+<em>Order of reconstruction results: Ours, Original, Ground Truth</em>
+
 <p align="center">
   <img src="results/ours.gif" alt="ours">
   <img src="results/original.gif" alt="original">
