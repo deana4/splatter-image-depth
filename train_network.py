@@ -24,6 +24,7 @@ from datasets.dataset_factory import get_dataset
 
 @hydra.main(version_base=None, config_path='configs', config_name="default_config")
 def main(cfg: DictConfig):
+
     torch.set_float32_matmul_precision('high')
     if cfg.general.mixed_precision:
         fabric = Fabric(accelerator="cuda", devices=cfg.general.num_devices, strategy="ddp",
@@ -45,11 +46,11 @@ def main(cfg: DictConfig):
             run_id = os.path.basename(run_name_path).split("run-")[1].split(".wandb")[0]
             print("Resuming run with id {}".format(run_id))
             wandb_run = wandb.init(project=cfg.wandb.project, resume=True,
-                                   id=run_id, config=dict_cfg)
+                            id = run_id, config=dict_cfg)
 
         else:
             wandb_run = wandb.init(project=cfg.wandb.project, reinit=True,
-                                   config=dict_cfg)
+                            config=dict_cfg)
 
     first_iter = 0
     device = safe_state(cfg)
@@ -59,12 +60,12 @@ def main(cfg: DictConfig):
 
     l = []
     if cfg.model.network_with_offset:
-        l.append({'params': gaussian_predictor.network_with_offset.parameters(),
-                  'lr': cfg.opt.base_lr})
+        l.append({'params': gaussian_predictor.network_with_offset.parameters(), 
+         'lr': cfg.opt.base_lr})
     if cfg.model.network_without_offset:
-        l.append({'params': gaussian_predictor.network_wo_offset.parameters(),
-                  'lr': cfg.opt.base_lr})
-    optimizer = torch.optim.Adam(l, lr=0.0, eps=1e-15,
+        l.append({'params': gaussian_predictor.network_wo_offset.parameters(), 
+         'lr': cfg.opt.base_lr})
+    optimizer = torch.optim.Adam(l, lr=0.0, eps=1e-15, 
                                  betas=cfg.opt.betas)
 
     # Resuming training
@@ -72,33 +73,33 @@ def main(cfg: DictConfig):
         if os.path.isfile(os.path.join(vis_dir, "model_latest.pth")):
             print('Loading an existing model from ', os.path.join(vis_dir, "model_latest.pth"))
             checkpoint = torch.load(os.path.join(vis_dir, "model_latest.pth"),
-                                    map_location=device)
+                                    map_location=device) 
             try:
                 gaussian_predictor.load_state_dict(checkpoint["model_state_dict"])
             except RuntimeError:
                 gaussian_predictor.load_state_dict(checkpoint["model_state_dict"],
-                                                   strict=False)
+                                                strict=False)
                 print("Warning, model mismatch - was this expected?")
             first_iter = checkpoint["iteration"]
-            best_PSNR = checkpoint["best_PSNR"]
+            best_PSNR = checkpoint["best_PSNR"] 
             print('Loaded model')
         # Resuming from checkpoint
         elif cfg.opt.pretrained_ckpt is not None:
             pretrained_ckpt_dir = os.path.join(cfg.opt.pretrained_ckpt, "model_latest.pth")
             checkpoint = torch.load(pretrained_ckpt_dir,
-                                    map_location=device)
+                                    map_location=device) 
             try:
                 gaussian_predictor.load_state_dict(checkpoint["model_state_dict"])
             except RuntimeError:
                 gaussian_predictor.load_state_dict(checkpoint["model_state_dict"],
-                                                   strict=False)
-            best_PSNR = checkpoint["best_PSNR"]
+                                                strict=False)
+            best_PSNR = checkpoint["best_PSNR"] 
             print('Loaded model from a pretrained checkpoint')
         else:
             best_PSNR = 0.0
 
     if cfg.opt.ema.use and fabric.is_global_zero:
-        ema = EMA(gaussian_predictor,
+        ema = EMA(gaussian_predictor, 
                   beta=cfg.opt.ema.beta,
                   update_every=cfg.opt.ema.update_every,
                   update_after_step=cfg.opt.ema.update_after_step)
@@ -127,13 +128,13 @@ def main(cfg: DictConfig):
 
     dataset = get_dataset(cfg, "train")
 
-    dataloader = DataLoader(dataset,
+    dataloader = DataLoader(dataset, 
                             batch_size=cfg.opt.batch_size,
                             shuffle=True,
                             num_workers=num_workers,
                             persistent_workers=persistent_workers)
     val_dataset = get_dataset(cfg, "val")
-    val_dataloader = DataLoader(val_dataset,
+    val_dataloader = DataLoader(val_dataset, 
                                 batch_size=1,
                                 shuffle=False,
                                 num_workers=1,
@@ -141,24 +142,24 @@ def main(cfg: DictConfig):
                                 pin_memory=True)
 
     test_dataset = get_dataset(cfg, "vis")
-    test_dataloader = DataLoader(test_dataset,
+    test_dataloader = DataLoader(test_dataset, 
                                  batch_size=1,
                                  shuffle=True)
-
+    
     # distribute model and training dataset
     gaussian_predictor, optimizer = fabric.setup(
         gaussian_predictor, optimizer
     )
     dataloader = fabric.setup_dataloaders(dataloader)
-
+    
     gaussian_predictor.train()
 
     print("Beginning training")
     first_iter += 1
     iteration = first_iter
 
-    for num_epoch in range((cfg.opt.iterations + 1 - first_iter) // len(dataloader) + 1):
-        dataloader.sampler.set_epoch(num_epoch)
+    for num_epoch in range((cfg.opt.iterations + 1 - first_iter)// len(dataloader) + 1):
+        dataloader.sampler.set_epoch(num_epoch)        
 
         for data in dataloader:
             iteration += 1
@@ -171,20 +172,19 @@ def main(cfg: DictConfig):
             if cfg.data.category == "hydrants" or cfg.data.category == "teddybears":
                 focals_pixels_pred = data["focals_pixels"][:, :cfg.data.input_images, ...]
                 input_images = torch.cat([data["gt_images"][:, :cfg.data.input_images, ...],
-                                          data["origin_distances"][:, :cfg.data.input_images, ...]],
-                                         dim=2)
+                                data["origin_distances"][:, :cfg.data.input_images, ...]],
+                                dim=2)
             else:
                 focals_pixels_pred = None
                 input_images = data["gt_images"][:, :cfg.data.input_images, ...]
 
-            # loading gt_depth maps
-            gt_depths = data["gt_depths"][:, :cfg.data.input_images, ...]
 
-            # passing gt_depth map to the model
+            gt_depths = data["gt_depths"][:, :cfg.data.input_images, ...]
             gaussian_splats = gaussian_predictor(input_images, gt_depths,
-                                                 data["view_to_world_transforms"][:, :cfg.data.input_images, ...],
-                                                 rot_transform_quats,
-                                                 focals_pixels_pred)
+                                                data["view_to_world_transforms"][:, :cfg.data.input_images, ...],
+                                                rot_transform_quats,
+                                                focals_pixels_pred)
+
 
             if cfg.data.category == "hydrants" or cfg.data.category == "teddybears":
                 # regularize very big gaussians
@@ -218,13 +218,13 @@ def main(cfg: DictConfig):
                         focals_pixels_render = data["focals_pixels"][b_idx, r_idx].cpu()
                     else:
                         focals_pixels_render = None
-                    image = render_predicted(gaussian_splat_batch,
-                                             data["world_view_transforms"][b_idx, r_idx],
-                                             data["full_proj_transforms"][b_idx, r_idx],
-                                             data["camera_centers"][b_idx, r_idx],
-                                             background,
-                                             cfg,
-                                             focals_pixels=focals_pixels_render)["render"]
+                    image = render_predicted(gaussian_splat_batch, 
+                                        data["world_view_transforms"][b_idx, r_idx],
+                                        data["full_proj_transforms"][b_idx, r_idx],
+                                        data["camera_centers"][b_idx, r_idx],
+                                        background,
+                                        cfg,
+                                        focals_pixels=focals_pixels_render)["render"]
                     # Put in a list for a later loss computation
                     rendered_images.append(image)
                     gt_image = data["gt_images"][b_idx, r_idx]
@@ -232,11 +232,11 @@ def main(cfg: DictConfig):
             rendered_images = torch.stack(rendered_images, dim=0)
             gt_images = torch.stack(gt_images, dim=0)
             # Loss computation
-            l12_loss_sum = loss_fn(rendered_images, gt_images)
+            l12_loss_sum = loss_fn(rendered_images, gt_images) 
             if cfg.opt.lambda_lpips != 0:
                 lpips_loss_sum = torch.mean(
                     lpips_fn(rendered_images * 2 - 1, gt_images * 2 - 1),
-                )
+                    )
 
             total_loss = l12_loss_sum * lambda_l12 + lpips_loss_sum * lambda_lpips
             if cfg.data.category == "hydrants" or cfg.data.category == "teddybears":
@@ -278,8 +278,7 @@ def main(cfg: DictConfig):
                         wandb.log({"reg_loss_small": np.log10(srl_for_log + 1e-8)}, step=iteration)
 
                 if (iteration % cfg.logging.render_log == 0 or iteration == 1) and fabric.is_global_zero:
-                    wandb.log({"render": wandb.Image(image.clamp(0.0, 1.0).permute(1, 2, 0).detach().cpu().numpy())},
-                              step=iteration)
+                    wandb.log({"render": wandb.Image(image.clamp(0.0, 1.0).permute(1, 2, 0).detach().cpu().numpy())}, step=iteration)
                     wandb.log({"gt": wandb.Image(gt_image.permute(1, 2, 0).detach().cpu().numpy())}, step=iteration)
                 if (iteration % cfg.logging.loop_log == 0 or iteration == 1) and fabric.is_global_zero:
                     # torch.cuda.empty_cache()
@@ -299,21 +298,18 @@ def main(cfg: DictConfig):
                     if cfg.data.category == "hydrants" or cfg.data.category == "teddybears":
                         focals_pixels_pred = vis_data["focals_pixels"][:, :cfg.data.input_images, ...]
                         input_images = torch.cat([vis_data["gt_images"][:, :cfg.data.input_images, ...],
-                                                  vis_data["origin_distances"][:, :cfg.data.input_images, ...]],
-                                                 dim=2)
+                                                vis_data["origin_distances"][:, :cfg.data.input_images, ...]],
+                                                dim=2)
                     else:
                         focals_pixels_pred = None
                         input_images = vis_data["gt_images"][:, :cfg.data.input_images, ...]
 
-                    # loading gt_depth maps
-                    gt_depths = data["gt_depths"][:, :cfg.data.input_images, ...]
-
-                    # passing gt_depth map to the model
+                    gt_depths = vis_data["gt_depths"][:, :cfg.data.input_images, ...]
                     gaussian_splats_vis = gaussian_predictor(input_images, gt_depths,
-                                                         data["view_to_world_transforms"][:, :cfg.data.input_images,
-                                                         ...],
-                                                         rot_transform_quats,
-                                                         focals_pixels_pred)
+                                                        vis_data["view_to_world_transforms"][:, :cfg.data.input_images, ...],
+                                                        rot_transform_quats,
+                                                        focals_pixels_pred)
+
                     test_loop = []
                     test_loop_gt = []
                     for r_idx in range(vis_data["gt_images"].shape[1]):
@@ -322,22 +318,20 @@ def main(cfg: DictConfig):
                             focals_pixels_render = vis_data["focals_pixels"][0, r_idx]
                         else:
                             focals_pixels_render = None
-                        test_image = render_predicted({k: v[0].contiguous() for k, v in gaussian_splats_vis.items()},
-                                                      vis_data["world_view_transforms"][0, r_idx],
-                                                      vis_data["full_proj_transforms"][0, r_idx],
-                                                      vis_data["camera_centers"][0, r_idx],
-                                                      background,
-                                                      cfg,
-                                                      focals_pixels=focals_pixels_render)["render"]
-                        test_loop_gt.append(
-                            (np.clip(vis_data["gt_images"][0, r_idx].detach().cpu().numpy(), 0, 1) * 255).astype(
-                                np.uint8))
-                        test_loop.append((np.clip(test_image.detach().cpu().numpy(), 0, 1) * 255).astype(np.uint8))
-
+                        test_image = render_predicted({k: v[0].contiguous() for k, v in gaussian_splats_vis.items()}, 
+                                            vis_data["world_view_transforms"][0, r_idx], 
+                                            vis_data["full_proj_transforms"][0, r_idx], 
+                                            vis_data["camera_centers"][0, r_idx],
+                                            background,
+                                            cfg,
+                                            focals_pixels=focals_pixels_render)["render"]
+                        test_loop_gt.append((np.clip(vis_data["gt_images"][0, r_idx].detach().cpu().numpy(), 0, 1)*255).astype(np.uint8))
+                        test_loop.append((np.clip(test_image.detach().cpu().numpy(), 0, 1)*255).astype(np.uint8))
+        
                     wandb.log({"rot": wandb.Video(np.asarray(test_loop), fps=20, format="mp4")},
-                              step=iteration)
+                        step=iteration)
                     wandb.log({"rot_gt": wandb.Video(np.asarray(test_loop_gt), fps=20, format="mp4")},
-                              step=iteration)
+                        step=iteration)
 
             fnames_to_save = []
             # Find out which models to save
@@ -348,17 +342,17 @@ def main(cfg: DictConfig):
                 print("\n[ITER {}] Validating".format(iteration + 1))
                 if cfg.opt.ema.use:
                     scores = evaluate_dataset(
-                        ema,
-                        val_dataloader,
+                        ema, 
+                        val_dataloader, 
                         device=device,
                         model_cfg=cfg)
                 else:
                     scores = evaluate_dataset(
-                        gaussian_predictor,
-                        val_dataloader,
+                        gaussian_predictor, 
+                        val_dataloader, 
                         device=device,
                         model_cfg=cfg)
-                wandb.log(scores, step=iteration + 1)
+                wandb.log(scores, step=iteration+1)
                 # save models - if the newest psnr is better than the best one,
                 # overwrite best_model. Always overwrite the latest model. 
                 if scores["PSNR_novel"] > best_PSNR:
@@ -371,21 +365,20 @@ def main(cfg: DictConfig):
             # ============ Model saving =================
             for fname_to_save in fnames_to_save:
                 ckpt_save_dict = {
-                    "iteration": iteration,
-                    "optimizer_state_dict": optimizer.state_dict(),
-                    "loss": total_loss.item(),
-                    "best_PSNR": best_PSNR
-                }
+                                "iteration": iteration,
+                                "optimizer_state_dict": optimizer.state_dict(),
+                                "loss": total_loss.item(),
+                                "best_PSNR": best_PSNR
+                                }
                 if cfg.opt.ema.use:
-                    ckpt_save_dict["model_state_dict"] = ema.ema_model.state_dict()
+                    ckpt_save_dict["model_state_dict"] = ema.ema_model.state_dict()                  
                 else:
-                    ckpt_save_dict["model_state_dict"] = gaussian_predictor.state_dict()
+                    ckpt_save_dict["model_state_dict"] = gaussian_predictor.state_dict() 
                 torch.save(ckpt_save_dict, os.path.join(vis_dir, fname_to_save))
 
             gaussian_predictor.train()
 
     wandb_run.finish()
-
 
 if __name__ == "__main__":
     main()
