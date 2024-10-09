@@ -39,6 +39,8 @@ In parallel, we also trained the original network on the same data but without t
   <em>Stage one results: Performance metrics comparing our model (purple) with the original model (orange) across different evaluation metrics</em>
 </p>
 
+<p align="center">
+  
 | Metric         | Original Model | Our Model | Improvement |
 |----------------|----------------|-----------|-------------|
 | LPIPS_cond     | 0.1284         | 0.0699    | 45.56%      |
@@ -49,13 +51,16 @@ In parallel, we also trained the original network on the same data but without t
 | SSIM_novel     | 0.8285         | 0.8756    | 5.68%       |
 | Training Loss  | -2.2634        | -2.4195   | 6.89%       |
 
-
+</p>
 
 <p align="center">
   <img src="results/graphs_second_stage.png" alt="Stage two results">
   <br>
-  <em>Stage two results: Performance metrics comparing our model (purple) with the original model (orange) across different evaluation metrics</em>
+  <em>
+    Stage two results: Performance metrics comparing our model (purple) with the original model (orange) across different evaluation metrics</em>
 </p>
+
+<p align="center">  
 
 | Metric               | Original Model | Our Model | Improvement |
 |----------------------|----------------|-----------|-------------|
@@ -69,11 +74,12 @@ In parallel, we also trained the original network on the same data but without t
 | Training L12 Loss    | -2.4185        | -2.5913   | 7.14%       |
 | Training LPIPS Loss  | -0.8640        | -1.0346   | 19.75%      |
 
+</p>
 
 ### Analysis
 As we can see, our model consistently outperforms the original in all the key areas we measured. The results show clear improvements in image quality, with higher PSNR values, especially when generating images based on specific conditions. The lower LPIPS scores indicate that the images our model generates are perceptually closer to the actual ground truth, and the higher SSIM scores suggest that our model preserves structural details more effectively. 
 
-It's worth noting that in the PSNR_cond graph, we observe slightly lower values for our model in the second stage. This is actually an expected outcome, as our model is constrained by depth map information, forcing it to emphasize and account for the 3D structure of objects. While this might result in slightly lower PSNR values, it ultimately leads to more structurally accurate and realistic 3D-aware representations. 
+We can observe that both our model and the original model show slightly lower values in the PSNR_cond graph. This is because, in the second stage, we continue training with an additional loss that corresponds to enhancing the 3D-realistic representation, which slightly lowers PSNR values but improves the structural accuracy of the model.
 
 The training loss graph shows that our model trains more efficiently and stays more stable, keeping loss values lower throughout. These combined improvements across various metrics suggest that our model is significantly better at both conditional and novel image generation compared to the original baseline.
 
