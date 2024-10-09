@@ -57,7 +57,7 @@ In parallel, we also trained the original network on the same data but without t
   <img src="results/graphs_second_stage.png" alt="Stage two results">
   <br>
   <em>
-    Stage two results: Performance metrics comparing our model (purple) with the original model (orange) across different evaluation metrics</em>
+    Stage two results: Performance metrics comparing our model (pink) with the original model (orange) across different evaluation metrics</em>
 </p>
 
 <p align="center">  
