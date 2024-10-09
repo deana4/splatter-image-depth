@@ -38,32 +38,37 @@ In parallel, we also trained the original network on the same data but without t
   <br>
   <em>Stage one results: Performance metrics comparing our model (purple) with the original model (orange) across different evaluation metrics</em>
 </p>
-| Metric | Original Model | Our Model | Improvement |
-|--------|----------------|-----------|-------------|
-| LPIPS_cond | 0.1284 | 0.0699 | 45.56% |
-| LPIPS_novel | 0.2188 | 0.1500 | 31.44% |
-| PSNR_cond | 25.8992 | 28.7034 | 10.83% |
-| PSNR_novel | 18.6321 | 20.6051 | 10.59% |
-| SSIM_cond | 0.9297 | 0.9648 | 3.77% |
-| SSIM_novel | 0.8285 | 0.8756 | 5.68% |
-| Training Loss | -2.2634 | -2.4195 | 6.89% |
+
+| Metric         | Original Model | Our Model | Improvement |
+|----------------|----------------|-----------|-------------|
+| LPIPS_cond     | 0.1284         | 0.0699    | 45.56%      |
+| LPIPS_novel    | 0.2188         | 0.1500    | 31.44%      |
+| PSNR_cond      | 25.8992        | 28.7034   | 10.83%      |
+| PSNR_novel     | 18.6321        | 20.6051   | 10.59%      |
+| SSIM_cond      | 0.9297         | 0.9648    | 3.77%       |
+| SSIM_novel     | 0.8285         | 0.8756    | 5.68%       |
+| Training Loss  | -2.2634        | -2.4195   | 6.89%       |
+
+
 
 <p align="center">
   <img src="results/graphs_second_stage.png" alt="Stage two results">
   <br>
   <em>Stage two results: Performance metrics comparing our model (purple) with the original model (orange) across different evaluation metrics</em>
 </p>
-| Metric | Original Model | Our Model | Improvement |
-|--------|----------------|-----------|-------------|
-| LPIPS_cond | 0.0866 | 0.0379 | 56.24% |
-| LPIPS_novel | 0.1955 | 0.1350 | 30.94% |
-| PSNR_cond | 27.9042 | 30.3524 | 8.77% |
-| PSNR_novel | 18.3668 | 20.5007 | 11.62% |
-| SSIM_cond | 0.9553 | 0.9762 | 2.19% |
-| SSIM_novel | 0.8291 | 0.8759 | 5.64% |
-| Training Loss | -2.2886 | -2.4609 | 7.53% |
-| Training L12 Loss | -2.4185 | -2.5913 | 7.14% |
-| Training LPIPS Loss | -0.8640 | -1.0346 | 19.75% |
+
+| Metric               | Original Model | Our Model | Improvement |
+|----------------------|----------------|-----------|-------------|
+| LPIPS_cond           | 0.0866         | 0.0379    | 56.24%      |
+| LPIPS_novel          | 0.1955         | 0.1350    | 30.94%      |
+| PSNR_cond            | 27.9042        | 30.3524   | 8.77%       |
+| PSNR_novel           | 18.3668        | 20.5007   | 11.62%      |
+| SSIM_cond            | 0.9553         | 0.9762    | 2.19%       |
+| SSIM_novel           | 0.8291         | 0.8759    | 5.64%       |
+| Training Loss        | -2.2886        | -2.4609   | 7.53%       |
+| Training L12 Loss    | -2.4185        | -2.5913   | 7.14%       |
+| Training LPIPS Loss  | -0.8640        | -1.0346   | 19.75%      |
+
 
 ### Analysis
 As we can see, our model consistently outperforms the original in all the key areas we measured. The results show clear improvements in image quality, with higher PSNR values, especially when generating images based on specific conditions. The lower LPIPS scores indicate that the images our model generates are perceptually closer to the actual ground truth, and the higher SSIM scores suggest that our model preserves structural details more effectively. 
